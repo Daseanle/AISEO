@@ -1,0 +1,161 @@
+version: "3.9"
+
+name: aiseo-dev
+
+volumes:
+  pg_data:
+  minio_data:
+
+networks:
+  dev:
+    driver: bridge
+
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: aiseo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    networks:
+      - dev
+
+  redis:
+    image: redis:7-alpine
+    container_name: aiseo-redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - dev
+
+  minio:
+    image: minio/minio:latest
+    container_name: aiseo-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_REGION_NAME: ${MINIO_REGION_NAME:-us-east-1}
+    command: ["server", "/data", "--console-address", ":9001"]
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - minio_data:/data
+    networks:
+      - dev
+
+  create-buckets:
+    image: minio/mc:latest
+    container_name: aiseo-minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >-
+      /bin/sh -c "
+      /usr/bin/mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      /usr/bin/mc mb -p local/$$S3_BUCKET || true &&
+      /usr/bin/mc mb -p local/$$S3_PUBLIC_BUCKET || true &&
+      /usr/bin/mc anonymous set download local/$$S3_PUBLIC_BUCKET || true &&
+      echo 'Buckets ensured' && sleep 1"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-app-bucket}
+      S3_PUBLIC_BUCKET: ${S3_PUBLIC_BUCKET:-app-public}
+    networks:
+      - dev
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile.api
+      target: dev
+    container_name: aiseo-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      create-buckets:
+        condition: service_completed_successfully
+    environment:
+      PORT: ${API_PORT:-3001}
+      DATABASE_URL: postgres://$${POSTGRES_USER:-postgres}:$${POSTGRES_PASSWORD:-postgres}@postgres:5432/$${POSTGRES_DB:-app}
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: ${MINIO_REGION_NAME:-us-east-1}
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-app-bucket}
+      S3_PUBLIC_BUCKET: ${S3_PUBLIC_BUCKET:-app-public}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SERPAPI_API_KEY: ${SERPAPI_API_KEY:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
+      GSC_CLIENT_ID: ${GSC_CLIENT_ID:-}
+      GSC_CLIENT_SECRET: ${GSC_CLIENT_SECRET:-}
+      GSC_REFRESH_TOKEN: ${GSC_REFRESH_TOKEN:-}
+    ports:
+      - "${API_PORT:-3001}:3001"
+    volumes:
+      - ../apps/api:/app/apps/api
+      - ../packages/shared:/app/packages/shared
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/seo/health >/dev/null 2>&1 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - dev
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/docker/Dockerfile.web
+      target: dev
+    container_name: aiseo-web
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      PORT: ${WEB_PORT:-3000}
+      NEXT_PUBLIC_API_URL: http://api:3001
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    volumes:
+      - ../apps/web:/app/apps/web
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - dev

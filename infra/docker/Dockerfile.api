@@ -1,0 +1,38 @@
+# syntax=docker/dockerfile:1.6
+
+FROM node:20-alpine AS base
+WORKDIR /app
+ENV PNPM_HOME="/root/.local/share/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
+# Install deps (monorepo aware)
+FROM base AS deps
+COPY package.json pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/shared/package.json packages/shared/
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --ignore-scripts
+
+# Development image
+FROM base AS dev
+ENV NODE_ENV=development
+COPY --from=deps /app/node_modules /app/node_modules
+COPY . .
+EXPOSE 3001
+CMD ["pnpm", "-C", "apps/api", "dev"]
+
+# Production runner
+FROM base AS runner
+ENV NODE_ENV=production
+COPY package.json pnpm-workspace.yaml ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/shared/package.json packages/shared/
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --prod --ignore-scripts && pnpm prune --prod
+COPY apps/api ./apps/api
+RUN pnpm -C apps/api build || true
+EXPOSE 3001
+CMD ["pnpm", "-C", "apps/api", "start"]
