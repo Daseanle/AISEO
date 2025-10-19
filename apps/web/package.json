@@ -1,0 +1,15 @@
+{
+  "name": "@acme/web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Next.js web app (placeholder)",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Run Next.js dev server here'",
+    "build": "echo 'No build step yet'",
+    "test": "echo 'No tests yet'",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "format": "prettier --check .",
+    "clean": "rimraf .next"
+  }
+}

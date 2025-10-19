@@ -1,0 +1,15 @@
+{
+  "name": "@acme/api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "NestJS API service (placeholder)",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Run NestJS dev server here'",
+    "build": "echo 'No build step yet'",
+    "test": "echo 'No tests yet'",
+    "lint": "eslint . --ext .ts,.js",
+    "format": "prettier --check .",
+    "clean": "rimraf dist"
+  }
+}
