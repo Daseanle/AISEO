@@ -11,7 +11,9 @@
     "test": "echo 'No tests yet'",
     "lint": "eslint . --ext .ts,.js",
     "format": "prettier --check .",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "migrate": "node -e \"console.log('No migrations to run')\"",
+    "seed": "node -e \"console.log('No seed data to load')\""
   },
   "dependencies": {
     "@nestjs/common": "^10.4.10",

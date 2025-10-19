@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  postgres:
+    extends:
+      file: ./infra/docker-compose.yml
+      service: postgres
+  redis:
+    extends:
+      file: ./infra/docker-compose.yml
+      service: redis
+  minio:
+    extends:
+      file: ./infra/docker-compose.yml
+      service: minio
+  create-buckets:
+    extends:
+      file: ./infra/docker-compose.yml
+      service: create-buckets
+  api:
+    extends:
+      file: ./infra/docker-compose.yml
+      service: api
+  web:
+    extends:
+      file: ./infra/docker-compose.yml
+      service: web
