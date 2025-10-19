@@ -1,0 +1,15 @@
+{
+  "name": "@acme/wp-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WordPress plugin (skeleton)",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'WP plugin dev: not applicable yet'",
+    "build": "echo 'No build step yet'",
+    "test": "echo 'No tests yet'",
+    "lint": "eslint . --ext .ts,.js",
+    "format": "prettier --check .",
+    "clean": "rimraf dist"
+  }
+}
