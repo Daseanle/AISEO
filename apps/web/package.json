@@ -2,14 +2,20 @@
   "name": "@acme/web",
   "private": true,
   "version": "0.1.0",
-  "description": "Next.js web app (placeholder)",
+  "description": "Next.js web app (MVP for AISEO)",
   "type": "module",
   "scripts": {
-    "dev": "echo 'Run Next.js dev server here'",
-    "build": "echo 'No build step yet'",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "test": "echo 'No tests yet'",
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
     "format": "prettier --check .",
     "clean": "rimraf .next"
+  },
+  "dependencies": {
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }

@@ -13,8 +13,8 @@ This repository is a Turborepo-powered monorepo managed with pnpm. It hosts appl
 ```
 .
 ├── apps
-│   ├── api          # NestJS service (placeholder)
-│   └── web          # Next.js app (placeholder)
+│   ├── api          # NestJS service (now runnable, exposes /seo/suggest)
+│   └── web          # Next.js app (now runnable, simple AISEO MVP UI)
 ├── packages
 │   ├── shared       # Shared TypeScript utilities, types and configs
 │   └── wp-plugin    # WordPress plugin (skeleton)
@@ -40,7 +40,7 @@ pnpm install
 - Run scripts across the monorepo via Turborepo:
 
 ```bash
-pnpm dev       # turbo run dev --parallel
+pnpm dev       # turbo run dev --parallel (starts web at 3000, api at 3001)
 pnpm build     # turbo run build
 pnpm lint      # turbo run lint
 pnpm test      # turbo run test
@@ -48,6 +48,13 @@ pnpm format    # prettier --check . (no-op formatting check)
 ```
 
 Each workspace (apps/*, packages/*) exposes the same script names so Turborepo can orchestrate them consistently.
+
+## Preview
+
+- Web UI: http://localhost:3000
+- API: http://localhost:3001/seo/suggest?topic=AI%20SEO
+
+The web app provides a simple form to generate SEO title/description/H1/outline suggestions, powered by the API. CORS is enabled by default on the API.
 
 ## TypeScript configuration
 
@@ -62,17 +69,16 @@ A shared base config lives in tsconfig.base.json and is extended by individual w
 
 - Each application should define its own `.env` file at the workspace root (e.g., `apps/web/.env`, `apps/api/.env`).
 - Commit sanitized `.env.example` files to document required variables for each app.
-- Never commit secrets. Use your team's secret management solution (e.g., 1Password, Vault, Doppler) or your hosting provider's environment manager.
 
-Suggested pattern per app:
+Examples:
 
 ```
 # apps/web/.env.example
-NEXT_PUBLIC_API_URL=
+NEXT_PUBLIC_API_URL=http://localhost:3001
 
 # apps/api/.env.example
-DATABASE_URL=
-JWT_SECRET=
+PORT=3001
+OPENAI_API_KEY=
 ```
 
 ## Contribution workflow
@@ -88,5 +94,5 @@ JWT_SECRET=
 
 ## Notes
 
-- This is a bootstrap: apps and packages contain placeholders that can be replaced with real implementations later.
+- This is an MVP: apps now run for preview. You can upgrade the API to use real LLMs (OpenAI) and add keyword research, audits, and content workflows in follow-up iterations.
 - The `infra/` folder is not part of the pnpm workspace (no Node package). Keep IaC and scripts here.
